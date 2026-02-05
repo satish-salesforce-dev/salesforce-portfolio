@@ -1,0 +1,30 @@
+name: Salesforce CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Setup Salesforce CLI
+      run: |
+        npm install sfdx-cli@latest --global
+        sfdx --version
+        
+    - name: Run Apex Tests
+      run: |
+        sfdx force:auth:jwt:grant --clientid ${{ secrets.SF_CLIENT_ID }} \
+          --jwtkeyfile server.key --username ${{ secrets.SF_USERNAME }} \
+          --setdefaultdevhubusername
+        sfdx force:apex:test:run --wait 10 --resultformat human --codecoverage
+        
+    - name: Validate Deployment
+      run: |
+        sfdx force:source:deploy --checkonly --sourcepath force-app \
+          --targetusername ${{ secrets.SF_USERNAME }}
